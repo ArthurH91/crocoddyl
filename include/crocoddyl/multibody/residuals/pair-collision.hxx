@@ -33,12 +33,14 @@ ResidualModelPairCollisionTpl<Scalar>::ResidualModelPairCollisionTpl(
         << "the pair index is wrong (it does not exist in the geometry model)");
   }
   if (static_cast<pinocchio::FrameIndex>(state->get_pinocchio()->njoints) <=
-      joint_id) {
+      joint_id) { 
     throw_pretty(
         "Invalid argument: "
         << "the joint index is wrong (it does not exist in the robot)");
   }
 }
+
+
 
 template <typename Scalar>
 ResidualModelPairCollisionTpl<Scalar>::~ResidualModelPairCollisionTpl() {}
@@ -58,9 +60,14 @@ void ResidualModelPairCollisionTpl<Scalar>::calc(
   pinocchio::computeDistance(*geom_model_.get(), d->geometry, pair_id_);
 
   // calculate residual
+  if( d->geometry.distanceResults[pair_id_].min_distance < 0 )
+  {
   data->r = d->geometry.distanceResults[pair_id_].nearest_points[0] -
             d->geometry.distanceResults[pair_id_].nearest_points[1];
-}
+  } else {
+    data->r.setZero();
+  }
+} 
 
 template <typename Scalar>
 void ResidualModelPairCollisionTpl<Scalar>::calcDiff(
@@ -72,6 +79,8 @@ void ResidualModelPairCollisionTpl<Scalar>::calcDiff(
 
   // calculate the vector from the joint jointId to the collision p1, expressed
   // in world frame
+  if( d->geometry.distanceResults[pair_id_].min_distance < 0 )
+  {
   d->d = d->geometry.distanceResults[pair_id_].nearest_points[0] -
          d->pinocchio->oMi[joint_id_].translation();
   pinocchio::getJointJacobian(pin_model_, *d->pinocchio, joint_id_,
@@ -83,6 +92,10 @@ void ResidualModelPairCollisionTpl<Scalar>::calcDiff(
 
   // compute the residual derivatives
   d->Rx.topLeftCorner(3, nv) = d->J.template topRows<3>();
+
+  }  else {
+  d->Rx.topLeftCorner(3, nv).setZero();
+  }
 }
 
 template <typename Scalar>
